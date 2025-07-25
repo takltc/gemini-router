@@ -1,8 +1,6 @@
 import { Env } from './env';
 import { handleGeminiProxy } from './geminiProxy';
 import { indexHtml } from './indexHtml';
-import { termsHtml } from './termsHtml';
-import { privacyHtml } from './privacyHtml';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -10,18 +8,6 @@ export default {
 
     if (url.pathname === '/' && request.method === 'GET') {
       return new Response(indexHtml, {
-        headers: { 'Content-Type': 'text/html' },
-      });
-    }
-
-    if (url.pathname === '/terms' && request.method === 'GET') {
-      return new Response(termsHtml, {
-        headers: { 'Content-Type': 'text/html' },
-      });
-    }
-
-    if (url.pathname === '/privacy' && request.method === 'GET') {
-      return new Response(privacyHtml, {
         headers: { 'Content-Type': 'text/html' },
       });
     }

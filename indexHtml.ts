@@ -220,9 +220,6 @@ export ANTHROPIC_API_KEY="your-gemini-api-key"</div>
                 <p>Run <code>claude</code> in your terminal and enjoy access to Gemini models</p>
             </div>
 
-            <div class="note">
-                <p><strong>For data privacy:</strong> Consider <a href="https://github.com/jizhejiang/gemini-router?tab=readme-ov-file#self-hosting" target="_blank">self-deploying gemini-router</a> to Cloudflare Workers instead of using this shared instance.</p>
-            </div>
         </div>
 
         <div class="footer-links">
@@ -231,8 +228,6 @@ export ANTHROPIC_API_KEY="your-gemini-api-key"</div>
             <a href="https://claude.ai/code" target="_blank">Claude Code</a>
             <a href="https://yovy.app" target="_blank">Yovy Chat</a>
             <br>
-            <a href="/terms">Terms</a>
-            <a href="/privacy">Privacy</a>
         </div>
     </div>
 
