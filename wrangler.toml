@@ -1,0 +1,15 @@
+name = "gemini-router"
+main = "index.ts"
+compatibility_date = "2025-07-25"
+routes = [
+  { pattern = "gemini.freechatgpt.win", custom_domain = true }
+]
+
+# Enable logging
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Environment variables
+[vars]
+GEMINI_BASE_URL = "https://xxx/v1beta"

@@ -1,0 +1,15 @@
+# Y-Router 开发环境配置示例
+# 复制此文件为 .dev.vars 并根据需要修改
+
+# Gemini API 基础 URL
+# 默认值: https://generativelanguage.googleapis.com/v1beta
+# 如果你使用的是自定义的 Gemini API 代理，可以在这里修改
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+
+# OpenRouter API 基础 URL  
+# 默认值: https://openrouter.ai/api/v1
+# 如果你使用的是自定义的 OpenRouter 代理，可以在这里修改
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# 注意：API Keys 不要存储在这里！
+# API Keys 应该在每次请求时通过 x-api-key header 提供
