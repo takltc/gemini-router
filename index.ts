@@ -3,7 +3,6 @@ import { handleGeminiProxy } from './geminiProxy';
 import { indexHtml } from './indexHtml';
 import { termsHtml } from './termsHtml';
 import { privacyHtml } from './privacyHtml';
-import { installSh } from './installSh';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -24,12 +23,6 @@ export default {
     if (url.pathname === '/privacy' && request.method === 'GET') {
       return new Response(privacyHtml, {
         headers: { 'Content-Type': 'text/html' },
-      });
-    }
-
-    if (url.pathname === '/install.sh' && request.method === 'GET') {
-      return new Response(installSh, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       });
     }
 
