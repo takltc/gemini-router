@@ -12,4 +12,4 @@ head_sampling_rate = 1
 
 # Environment variables
 [vars]
-GEMINI_BASE_URL = "https://xxx/v1beta"
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
