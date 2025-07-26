@@ -36,7 +36,7 @@ export ANTHROPIC_SMALL_FAST_MODEL="gemini-2.5-pro"
 
 1. **克隆并部署:**
    ```bash
-   git clone https://github.com/jizhejiang/gemini-router.git
+   git clone https://github.com/takltc/gemini-router
    cd gemini-router
    npm install -g wrangler
    wrangler deploy

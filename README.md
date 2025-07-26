@@ -36,7 +36,7 @@ For better reliability and control, you can deploy your own instance of gemini-r
 
 1. **Clone and deploy:**
    ```bash
-   git clone https://github.com/jizhejiang/gemini-router.git
+   git clone https://github.com/takltc/gemini-router
    cd gemini-router
    npm install -g wrangler
    wrangler deploy
