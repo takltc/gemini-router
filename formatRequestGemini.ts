@@ -5,14 +5,14 @@
  */
 
 import type {
-  ClaudeRequest,
   ClaudeMessage,
+  ClaudeRequest,
   ClaudeTool,
   GeminiContent,
   GeminiPart,
   GeminiRequest,
-  GeminiTool,
   GeminiSystemInstruction,
+  GeminiTool,
 } from './utils/types';
 
 /**
@@ -22,13 +22,12 @@ import type {
  */
 function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
   const geminiContents: GeminiContent[] = [];
+  const toolNameMap = new Map<string, string>();
 
   for (const message of messages) {
-    // Map role: user -> user, assistant -> model
     const geminiRole = message.role === 'assistant' ? 'model' : 'user';
 
     if (!Array.isArray(message.content)) {
-      // Simple text message
       if (typeof message.content === 'string') {
         geminiContents.push({
           role: geminiRole,
@@ -38,7 +37,6 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
       continue;
     }
 
-    // Process complex content array
     const parts: GeminiPart[] = [];
 
     for (const contentPart of message.content) {
@@ -50,7 +48,9 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
               : JSON.stringify(contentPart.text),
         });
       } else if (contentPart.type === 'tool_use') {
-        // Convert Claude tool_use to Gemini functionCall
+        if (contentPart.id) {
+          toolNameMap.set(contentPart.id, contentPart.name);
+        }
         parts.push({
           functionCall: {
             name: contentPart.name,
@@ -58,10 +58,16 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
           },
         });
       } else if (contentPart.type === 'tool_result') {
-        // Convert Claude tool_result to Gemini functionResponse
+        const toolName = toolNameMap.get(contentPart.tool_use_id);
+        if (!toolName) {
+          console.warn(
+            `Could not find corresponding tool use for tool_result with id: ${contentPart.tool_use_id}`
+          );
+          continue;
+        }
         parts.push({
           functionResponse: {
-            name: contentPart.tool_use_id, // Note: Gemini uses name, not ID
+            name: toolName,
             response: {
               result: contentPart.content,
             },
@@ -118,7 +124,7 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
 
   // Clean items if it's an array schema
   if (cleaned.items) {
-    cleaned.items = cleanSchema(cleaned.items);
+    cleaned.items = cleanSchema(cleaned.items as Record<string, unknown>);
   }
 
   // Clean anyOf, oneOf, allOf
@@ -198,7 +204,14 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   };
 
   // Add system instruction if present
-  const systemInstruction = formatSystemInstruction(system);
+  const systemInstruction = formatSystemInstruction(
+    system as
+      | string
+      | { text: string }
+      | {
+          text: string;
+        }[]
+  );
   if (systemInstruction) {
     geminiBody.systemInstruction = systemInstruction;
   }
@@ -211,10 +224,16 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   }
 
   // Convert and add tools if present
-  const convertedTools = convertTools(tools);
+  const convertedTools = convertTools(tools ?? []);
   if (convertedTools) {
     geminiBody.tools = [convertedTools];
   }
+
+  if (!geminiBody.tools) {
+    geminiBody.tools = [];
+  }
+
+  geminiBody.tools.push({ googleSearch: {} });
 
   // Note: Gemini uses stream=true as query parameter, not in body
   // Return both the body and stream flag for the caller to handle
