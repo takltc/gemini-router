@@ -56,7 +56,7 @@ export function formatGeminiToClaude(res: GeminiResponse, model: string): Claude
       // Function call - convert to tool_use
       claudeResponse.content.push({
         type: 'tool_use',
-        id: `toolu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: part.functionCall.id,
         name: part.functionCall.name,
         input: part.functionCall.args || {},
       });

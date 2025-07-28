@@ -176,3 +176,6 @@ dist
 # claude code
 .claude/
 CLAUDE.md
+
+#idea
+.idea/

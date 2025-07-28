@@ -111,7 +111,7 @@ export function streamGeminiToAnthropic(
         const parts = candidate.content?.parts || [];
 
         for (const part of parts) {
-          if (part.text !== undefined) {
+          if ('text' in part && part.text !== undefined) {
             // Handle text content
             if (isToolUse) {
               // Close previous tool use block
@@ -138,17 +138,17 @@ export function streamGeminiToAnthropic(
             }
 
             // Send text delta
-            if (part.text) {
+            if ('text' in part && part.text) {
               enqueueSSE(controller, 'content_block_delta', {
                 type: 'content_block_delta',
                 index: contentBlockIndex,
                 delta: {
                   type: 'text_delta',
-                  text: part.text,
+                  text: part.text || '',
                 },
               });
             }
-          } else if (part.functionCall) {
+          } else if ('functionCall' in part && part.functionCall) {
             // Handle function call
             if (hasStartedTextBlock) {
               // Close previous text block
@@ -183,7 +183,7 @@ export function streamGeminiToAnthropic(
               const toolBlock = {
                 type: 'tool_use',
                 id: toolCallId,
-                name: part.functionCall.name,
+                name: part.functionCall.name ?? '',
                 input: {},
               };
 
@@ -195,10 +195,10 @@ export function streamGeminiToAnthropic(
             }
 
             // Send function arguments as input_json_delta
-            if (part.functionCall.args) {
+            if ('functionCall' in part && part.functionCall.args) {
               const argsJson = JSON.stringify(part.functionCall.args);
-              const currentJson = toolCallJsonMap.get(currentToolCallId) || '';
-              toolCallJsonMap.set(currentToolCallId, currentJson + argsJson);
+              const currentJson = toolCallJsonMap.get(currentToolCallId || '') || '';
+              toolCallJsonMap.set(currentToolCallId || '', currentJson + argsJson);
 
               enqueueSSE(controller, 'content_block_delta', {
                 type: 'content_block_delta',

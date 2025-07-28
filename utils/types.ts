@@ -71,8 +71,8 @@ export interface GeminiTextPart {
 
 export interface GeminiFunctionCallPart {
   functionCall: {
-    name: string;
-    args: Record<string, unknown>;
+    name?: string;
+    args?: Record<string, unknown>;
     id?: string;
   };
 }
@@ -92,7 +92,12 @@ export interface GeminiFunctionDeclaration {
 }
 
 export interface GeminiTool {
-  functionDeclarations: GeminiFunctionDeclaration[];
+  functionDeclarations?: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  }[];
+  googleSearch?: Record<string, never>;
 }
 
 export interface GeminiSystemInstruction {

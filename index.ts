@@ -18,11 +18,11 @@ export default {
     ) {
       return handleGeminiProxy(request, env);
     }
-    
+
     // Fallback for original /v1/messages, now also routes to Gemini
     // This can be deprecated or changed to another provider in the future
     if (url.pathname === '/v1/messages' && request.method === 'POST') {
-        return handleGeminiProxy(request, env);
+      return handleGeminiProxy(request, env);
     }
 
     return new Response('Not Found', { status: 404 });

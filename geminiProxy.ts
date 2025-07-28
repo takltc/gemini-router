@@ -45,13 +45,13 @@ export async function handleGeminiProxy(request: Request, env: Env): Promise<Res
         headers: { 'Content-Type': 'application/json' },
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error processing Gemini proxy request:', error);
     return new Response(
       JSON.stringify({
         error: {
           type: 'internal_error',
-          message: error.message || 'Internal server error',
+          message: (error as Error).message || 'Internal server error',
         },
       }),
       {

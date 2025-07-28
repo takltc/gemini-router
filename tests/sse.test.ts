@@ -1,10 +1,12 @@
+/// <reference types="vitest/globals" />
+
 /**
  * Tests for SSE utilities
  * @author jizhejiang
- * @date 2025-01-27
+ * @date 2025-07-26
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { enqueueSSE } from '../utils/sse';
 
 describe('enqueueSSE', () => {
@@ -22,7 +24,7 @@ describe('enqueueSSE', () => {
     expect(controller.enqueue).toHaveBeenCalledTimes(1);
 
     // Get the encoded message
-    const callArg = (controller.enqueue as vi.Mock).mock.calls[0][0];
+    const callArg = (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
     // Decode the Uint8Array back to string
     const decoder = new TextDecoder();
@@ -48,7 +50,7 @@ describe('enqueueSSE', () => {
 
     enqueueSSE(controller, eventType, data);
 
-    const callArg = (controller.enqueue as vi.Mock).mock.calls[0][0];
+    const callArg = (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const decoder = new TextDecoder();
     const encodedMessage = decoder.decode(callArg);
 
@@ -63,11 +65,11 @@ describe('enqueueSSE', () => {
     } as unknown as ReadableStreamDefaultController;
 
     const eventType = 'test_event';
-    const data = [1, 2, 3];
+    const data = [1, 2, 3] as any;
 
     enqueueSSE(controller, eventType, data);
 
-    const callArg = (controller.enqueue as vi.Mock).mock.calls[0][0];
+    const callArg = (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const decoder = new TextDecoder();
     const encodedMessage = decoder.decode(callArg);
 
@@ -86,10 +88,14 @@ describe('enqueueSSE', () => {
 
     const decoder = new TextDecoder();
 
-    const nullMessage = decoder.decode((controller.enqueue as vi.Mock).mock.calls[0][0]);
+    const nullMessage = decoder.decode(
+      (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    );
     expect(nullMessage).toBe('event: null_event\ndata: null\n\n');
 
-    const undefinedMessage = decoder.decode((controller.enqueue as vi.Mock).mock.calls[1][0]);
+    const undefinedMessage = decoder.decode(
+      (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[1][0]
+    );
     expect(undefinedMessage).toBe('event: undefined_event\ndata: undefined\n\n');
   });
 
@@ -106,7 +112,7 @@ describe('enqueueSSE', () => {
 
     enqueueSSE(controller, 'special_chars', data);
 
-    const callArg = (controller.enqueue as vi.Mock).mock.calls[0][0];
+    const callArg = (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const decoder = new TextDecoder();
     const encodedMessage = decoder.decode(callArg);
 
@@ -124,7 +130,7 @@ describe('enqueueSSE', () => {
 
     enqueueSSE(controller, 'unicode_test', data);
 
-    const callArg = (controller.enqueue as vi.Mock).mock.calls[0][0];
+    const callArg = (controller.enqueue as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
     // Verify it's a Uint8Array
     expect(callArg).toBeInstanceOf(Uint8Array);
