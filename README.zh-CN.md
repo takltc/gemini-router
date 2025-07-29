@@ -30,6 +30,15 @@ export ANTHROPIC_MODEL="gemini-2.5-pro"
 export ANTHROPIC_SMALL_FAST_MODEL="gemini-2.5-pro"
 ```
 
+**第二步（替代方案）：** 如果您不想托管 gemini-router 的端点，您可以随意使用我托管的端点，然后您可以忽略自托管步骤，并在您的 shell 配置文件（`~/.bashrc` 或 `~/.zshrc`）中设置以下环境变量：
+
+```bash
+export ANTHROPIC_BASE_URL="https://takltc.freechatgpt.win"
+export ANTHROPIC_API_KEY="your-gemini-api-key"
+export ANTHROPIC_MODEL="gemini-2.5-pro"
+export ANTHROPIC_SMALL_FAST_MODEL="gemini-2.5-pro"
+```
+
 ## 自行托管
 
 为了获得更好的可靠性和控制权，您可以部署自己的 gemini-router 实例。

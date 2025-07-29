@@ -30,6 +30,15 @@ export ANTHROPIC_MODEL="gemini-2.5-pro"
 export ANTHROPIC_SMALL_FAST_MODEL="gemini-2.5-pro"
 ```
 
+**Step 2 (alternative):** If you do not want to host a gemini-router's endpoint. You can use the endpoint I hosted as you want, then you can ignore the self-hosting step,  and set the following environment variables in your shell profile (`~/.bashrc` or `~/.zshrc`):
+
+```bash
+export ANTHROPIC_BASE_URL="https://takltc.freechatgpt.win"
+export ANTHROPIC_API_KEY="your-gemini-api-key"
+export ANTHROPIC_MODEL="gemini-2.5-pro"
+export ANTHROPIC_SMALL_FAST_MODEL="gemini-2.5-pro"
+```
+
 ## Self-Hosting
 
 For better reliability and control, you can deploy your own instance of gemini-router.
