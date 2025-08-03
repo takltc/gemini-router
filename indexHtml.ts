@@ -223,10 +223,9 @@ export ANTHROPIC_API_KEY="your-gemini-api-key"</div>
         </div>
 
         <div class="footer-links">
-            <a href="https://github.com/jizhejiang/gemini-router" target="_blank">gemini-router</a>
+            <a href="https://github.com/takltc/gemini-router" target="_blank">gemini-router</a>
             <a href="https://deepmind.google/technologies/gemini/" target="_blank">Google Gemini</a>
             <a href="https://claude.ai/code" target="_blank">Claude Code</a>
-            <a href="https://yovy.app" target="_blank">Yovy Chat</a>
             <br>
         </div>
     </div>

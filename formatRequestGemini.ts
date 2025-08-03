@@ -48,7 +48,7 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
               : JSON.stringify(contentPart.text),
         });
       } else if (contentPart.type === 'tool_use') {
-        if (contentPart.id) {
+        if (contentPart.id && contentPart.name) {
           toolNameMap.set(contentPart.id, contentPart.name);
         }
         parts.push({
@@ -57,7 +57,7 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
             args: contentPart.input,
           },
         });
-      } else if (contentPart.type === 'tool_result') {
+      } else if (contentPart.type === 'tool_result' && contentPart.tool_use_id) {
         const toolName = toolNameMap.get(contentPart.tool_use_id);
         if (!toolName) {
           console.warn(
@@ -193,7 +193,7 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   geminiBody: GeminiRequest;
   isStream: boolean;
 } {
-  const { messages, system, temperature, tools, stream = false } = body;
+  const { messages, system, temperature, tools, stream = true } = body;
 
   // Convert messages to contents
   const contents = convertMessages(messages);
