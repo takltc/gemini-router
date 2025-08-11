@@ -34,6 +34,10 @@ export interface ClaudeRequest {
   messages: ClaudeMessage[];
   system?: string | ClaudeSystemMessage[];
   temperature?: number;
+  top_p?: number;
+  top_k?: number;
+  max_tokens?: number;
+  stop_sequences?: string[];
   tools?: ClaudeTool[];
   stream?: boolean;
 }

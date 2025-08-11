@@ -192,7 +192,7 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   geminiBody: GeminiRequest;
   isStream: boolean;
 } {
-  const { messages = [], system, temperature, tools, stream = false } = body;
+  const { messages = [], system, temperature, top_p, top_k, max_tokens, stop_sequences, tools, stream = false } = body;
 
   // Convert messages to contents
   const contents = convertMessages(messages);
@@ -215,11 +215,26 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
     geminiBody.systemInstruction = systemInstruction;
   }
 
-  // Add generation config if temperature is specified
+  // Add/merge generation config from Claude params
+  const generationConfig: NonNullable<GeminiRequest['generationConfig']> = {};
   if (temperature !== undefined) {
-    geminiBody.generationConfig = {
-      temperature: temperature,
-    };
+    generationConfig.temperature = temperature;
+  }
+  if (top_p !== undefined) {
+    generationConfig.topP = top_p;
+  }
+  if (top_k !== undefined) {
+    generationConfig.topK = top_k;
+  }
+  if (max_tokens !== undefined) {
+    generationConfig.maxOutputTokens = max_tokens;
+  }
+  if (stop_sequences && Array.isArray(stop_sequences) && stop_sequences.length > 0) {
+    // @ts-expect-error: stopSequences is supported by Gemini generationConfig
+    (generationConfig as any).stopSequences = stop_sequences;
+  }
+  if (Object.keys(generationConfig).length > 0) {
+    geminiBody.generationConfig = generationConfig;
   }
 
   // Convert and add tools if present
