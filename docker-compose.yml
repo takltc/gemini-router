@@ -1,0 +1,57 @@
+# Docker Compose configuration for Gemini Router
+# Author: jizhejiang
+# Date: 2025-08-11
+
+version: '3.8'
+
+services:
+  gemini-router:
+    # Build from local Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Container name
+    container_name: gemini-router
+    
+    # Port mapping
+    ports:
+      - "8787:8787"
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - GEMINI_BASE_URL=${GEMINI_BASE_URL:-http://ec2-46-137-237-22.ap-southeast-1.compute.amazonaws.com:8012/v1beta}
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8787/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+# Networks (using default bridge network)
+networks:
+  default:
+    driver: bridge

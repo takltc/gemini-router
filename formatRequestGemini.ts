@@ -20,7 +20,7 @@ import type {
  * @param messages Claude format messages array
  * @returns Gemini format contents array
  */
-function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
+function convertMessages(messages: ClaudeMessage[] = []): GeminiContent[] {
   const geminiContents: GeminiContent[] = [];
   const toolNameMap = new Map<string, string>();
 
@@ -58,19 +58,16 @@ function convertMessages(messages: ClaudeMessage[]): GeminiContent[] {
           },
         });
       } else if (contentPart.type === 'tool_result' && contentPart.tool_use_id) {
-        const toolName = toolNameMap.get(contentPart.tool_use_id);
-        if (!toolName) {
-          console.warn(
-            `Could not find corresponding tool use for tool_result with id: ${contentPart.tool_use_id}`
-          );
-          continue;
-        }
+        // Prefer mapped tool name from prior tool_use; fallback to tool_use_id per tests
+        const toolName = toolNameMap.get(contentPart.tool_use_id) || contentPart.tool_use_id;
+        const response =
+          typeof contentPart.content === 'string'
+            ? { result: contentPart.content }
+            : contentPart.content ?? {};
         parts.push({
           functionResponse: {
             name: toolName,
-            response: {
-              result: contentPart.content,
-            },
+            response,
           },
         });
       }
@@ -101,21 +98,21 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const cleaned = { ...schema };
 
   // Remove additionalProperties
-  delete cleaned.additionalProperties;
+  delete (cleaned as any).additionalProperties;
 
   // Handle format field - Gemini only supports 'enum' and 'date-time' for STRING type
-  if (cleaned.type === 'string' && cleaned.format) {
-    if (cleaned.format !== 'enum' && cleaned.format !== 'date-time') {
+  if ((cleaned as any).type === 'string' && (cleaned as any).format) {
+    if ((cleaned as any).format !== 'enum' && (cleaned as any).format !== 'date-time') {
       // Remove unsupported format values
-      delete cleaned.format;
+      delete (cleaned as any).format;
     }
   }
 
   // Recursively clean nested schemas
-  if (cleaned.properties) {
-    cleaned.properties = Object.entries(cleaned.properties).reduce(
+  if ((cleaned as any).properties) {
+    (cleaned as any).properties = Object.entries((cleaned as any).properties).reduce(
       (acc, [key, value]) => {
-        acc[key] = cleanSchema(value as Record<string, unknown>);
+        (acc as any)[key] = cleanSchema(value as Record<string, unknown>);
         return acc;
       },
       {} as Record<string, unknown>
@@ -123,14 +120,16 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
   }
 
   // Clean items if it's an array schema
-  if (cleaned.items) {
-    cleaned.items = cleanSchema(cleaned.items as Record<string, unknown>);
+  if ((cleaned as any).items) {
+    (cleaned as any).items = cleanSchema((cleaned as any).items as Record<string, unknown>);
   }
 
   // Clean anyOf, oneOf, allOf
-  ['anyOf', 'oneOf', 'allOf'].forEach((key) => {
-    if (cleaned[key] && Array.isArray(cleaned[key])) {
-      cleaned[key] = cleaned[key].map((item: Record<string, unknown>) => cleanSchema(item));
+  ;(['anyOf', 'oneOf', 'allOf'] as const).forEach((key) => {
+    if ((cleaned as any)[key] && Array.isArray((cleaned as any)[key])) {
+      (cleaned as any)[key] = (cleaned as any)[key].map((item: Record<string, unknown>) =>
+        cleanSchema(item)
+      );
     }
   });
 
@@ -142,7 +141,7 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
  * @param tools Claude format tools array
  * @returns Gemini format function declarations
  */
-function convertTools(tools: ClaudeTool[]): GeminiTool | undefined {
+function convertTools(tools: ClaudeTool[] = []): GeminiTool | undefined {
   if (!tools || tools.length === 0) {
     return undefined;
   }
@@ -175,7 +174,7 @@ function formatSystemInstruction(
   } else if (Array.isArray(system)) {
     text = system.map((item) => (typeof item === 'string' ? item : item.text)).join('\n');
   } else {
-    text = system.text || JSON.stringify(system);
+    text = (system as { text?: string }).text || JSON.stringify(system);
   }
 
   // Return in Gemini's expected format with parts array
@@ -193,7 +192,7 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   geminiBody: GeminiRequest;
   isStream: boolean;
 } {
-  const { messages, system, temperature, tools, stream = true } = body;
+  const { messages = [], system, temperature, tools, stream = false } = body;
 
   // Convert messages to contents
   const contents = convertMessages(messages);
@@ -229,16 +228,10 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
     geminiBody.tools = [convertedTools];
   }
 
-  if (!geminiBody.tools) {
-    geminiBody.tools = [];
-  }
-
-  geminiBody.tools.push({ googleSearch: {} });
-
   // Note: Gemini uses stream=true as query parameter, not in body
   // Return both the body and stream flag for the caller to handle
   return {
     geminiBody,
-    isStream: stream,
+    isStream: Boolean(stream),
   };
 }

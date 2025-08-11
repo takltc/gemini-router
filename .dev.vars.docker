@@ -1,0 +1,4 @@
+# 用于 Docker 容器的环境变量配置
+
+# 使用 wrangler.toml 中配置的实际可访问的 Gemini API 地址
+GEMINI_BASE_URL=http://host.docker.internal:8012/v1beta

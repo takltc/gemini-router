@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --local --ip 0.0.0.0 --port 8787",
     "deploy": "wrangler deploy",
     "test": "vitest",
     "test:watch": "vitest watch",
@@ -20,13 +20,13 @@
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@vitest/coverage-v8": "^1.2.0",
+    "@vitest/coverage-v8": "^3.2.0",
     "eslint": "^9.31.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.3",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.28.1"
   }
 }
