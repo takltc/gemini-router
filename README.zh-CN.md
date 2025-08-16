@@ -2,6 +2,9 @@
 
 # gemini-router
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Claude Code Compatible](https://img.shields.io/badge/Claude%20Code-Compatible-blue)](https://claude.ai/code)
+
 一个 Cloudflare Worker，用于在 Anthropic 的 Claude API 和 Google 的 Gemini API 之间进行转换。这使您能够将兼容 Claude 的客户端与 Google Gemini 模型一起使用。
 
 ## 功能
