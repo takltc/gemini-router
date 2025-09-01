@@ -84,3 +84,5 @@ npm run deploy # Deploy to Cloudflare Workers
 - **Compliance**: Users are responsible for ensuring their usage complies with all applicable laws and regulations in their jurisdiction.
 
 **Use at your own risk.**
+
+[![Star History Chart](https://api.star-history.com/svg?repos=takltc/gemini-router&type=Date)](https://www.star-history.com/#takltc/gemini-router&Date)
