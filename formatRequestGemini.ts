@@ -63,11 +63,11 @@ function convertMessages(messages: ClaudeMessage[] = []): GeminiContent[] {
         const response =
           typeof contentPart.content === 'string'
             ? { result: contentPart.content }
-            : contentPart.content ?? {};
+            : (contentPart.content ?? ({} as Record<string, unknown>));
         parts.push({
           functionResponse: {
             name: toolName,
-            response,
+            response: response as Record<string, unknown>,
           },
         });
       }
@@ -95,24 +95,37 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
   }
 
   // Create a copy to avoid mutating the original
-  const cleaned = { ...schema };
+  const cleaned: Record<string, unknown> = { ...schema };
+
+  type MutableSchema = Record<string, unknown> & {
+    additionalProperties?: unknown;
+    type?: unknown;
+    format?: unknown;
+    properties?: Record<string, unknown>;
+    items?: unknown;
+    anyOf?: unknown[];
+    oneOf?: unknown[];
+    allOf?: unknown[];
+  };
+
+  const s = cleaned as MutableSchema;
 
   // Remove additionalProperties
-  delete (cleaned as any).additionalProperties;
+  delete s.additionalProperties;
 
   // Handle format field - Gemini only supports 'enum' and 'date-time' for STRING type
-  if ((cleaned as any).type === 'string' && (cleaned as any).format) {
-    if ((cleaned as any).format !== 'enum' && (cleaned as any).format !== 'date-time') {
+  if (s.type === 'string' && s.format) {
+    if (s.format !== 'enum' && s.format !== 'date-time') {
       // Remove unsupported format values
-      delete (cleaned as any).format;
+      delete s.format;
     }
   }
 
   // Recursively clean nested schemas
-  if ((cleaned as any).properties) {
-    (cleaned as any).properties = Object.entries((cleaned as any).properties).reduce(
-      (acc, [key, value]) => {
-        (acc as any)[key] = cleanSchema(value as Record<string, unknown>);
+  if (s.properties) {
+    s.properties = Object.entries(s.properties).reduce(
+      (acc: Record<string, unknown>, [key, value]) => {
+        acc[key] = cleanSchema(value as Record<string, unknown>);
         return acc;
       },
       {} as Record<string, unknown>
@@ -120,16 +133,14 @@ function cleanSchema(schema: Record<string, unknown>): Record<string, unknown> {
   }
 
   // Clean items if it's an array schema
-  if ((cleaned as any).items) {
-    (cleaned as any).items = cleanSchema((cleaned as any).items as Record<string, unknown>);
+  if (s.items) {
+    s.items = cleanSchema(s.items as Record<string, unknown>);
   }
 
   // Clean anyOf, oneOf, allOf
-  ;(['anyOf', 'oneOf', 'allOf'] as const).forEach((key) => {
-    if ((cleaned as any)[key] && Array.isArray((cleaned as any)[key])) {
-      (cleaned as any)[key] = (cleaned as any)[key].map((item: Record<string, unknown>) =>
-        cleanSchema(item)
-      );
+  (['anyOf', 'oneOf', 'allOf'] as const).forEach((key) => {
+    if (s[key] && Array.isArray(s[key])) {
+      s[key] = (s[key] as unknown[]).map((item) => cleanSchema(item as Record<string, unknown>));
     }
   });
 
@@ -146,6 +157,32 @@ function convertTools(tools: ClaudeTool[] = []): GeminiTool | undefined {
     return undefined;
   }
 
+  // Check for web_search tool
+  const hasWebSearch = tools.some((tool) => tool.name === 'web_search');
+
+  if (hasWebSearch) {
+    // Filter out web_search tool from function declarations
+    const functionTools = tools.filter((tool) => tool.name !== 'web_search');
+
+    // Create tool object with both function declarations and googleSearch
+    const geminiTool: GeminiTool = {
+      functionDeclarations: functionTools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: cleanSchema(tool.input_schema),
+      })),
+      googleSearch: {},
+    };
+
+    // If there are no other tools besides web_search, remove empty functionDeclarations
+    if (functionTools.length === 0) {
+      delete geminiTool.functionDeclarations;
+    }
+
+    return geminiTool;
+  }
+
+  // Default behavior for function declarations only
   return {
     functionDeclarations: tools.map((tool) => ({
       name: tool.name,
@@ -192,7 +229,17 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
   geminiBody: GeminiRequest;
   isStream: boolean;
 } {
-  const { messages = [], system, temperature, top_p, top_k, max_tokens, stop_sequences, tools, stream = false } = body;
+  const {
+    messages = [],
+    system,
+    temperature,
+    top_p,
+    top_k,
+    max_tokens,
+    stop_sequences,
+    tools,
+    stream = false,
+  } = body;
 
   // Convert messages to contents
   const contents = convertMessages(messages);
@@ -230,8 +277,7 @@ export function formatClaudeToGemini(body: ClaudeRequest): {
     generationConfig.maxOutputTokens = max_tokens;
   }
   if (stop_sequences && Array.isArray(stop_sequences) && stop_sequences.length > 0) {
-    // @ts-expect-error: stopSequences is supported by Gemini generationConfig
-    (generationConfig as any).stopSequences = stop_sequences;
+    generationConfig.stopSequences = stop_sequences;
   }
   if (Object.keys(generationConfig).length > 0) {
     geminiBody.generationConfig = generationConfig;

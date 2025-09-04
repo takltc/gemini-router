@@ -72,6 +72,27 @@ export function formatGeminiToClaude(res: GeminiResponse, model: string): Claude
     }
   }
 
+  // Handle grounding metadata for web search results
+  if (candidate.groundingMetadata?.groundingChunks) {
+    const groundingChunks = candidate.groundingMetadata.groundingChunks;
+    for (const chunk of groundingChunks) {
+      if (chunk.web) {
+        const webChunk = chunk.web;
+        claudeResponse.content.push({
+          type: 'web_search_tool_result',
+          tool_use_id: `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          content: [
+            {
+              type: 'web_search_result',
+              title: webChunk.title,
+              url: webChunk.uri,
+            },
+          ],
+        });
+      }
+    }
+  }
+
   // Handle finish reason mapping
   if (candidate.finishReason) {
     switch (candidate.finishReason) {

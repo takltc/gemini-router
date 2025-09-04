@@ -212,10 +212,52 @@ export function streamGeminiToAnthropic(
           }
         }
 
-        // Handle groundingMetadata if present (for citations)
+        // Handle groundingMetadata if present (for web search results)
         if (candidate.groundingMetadata?.groundingChunks) {
-          // This could be handled as text content with citations
-          // For now, we'll skip this as it's not part of the standard flow
+          const groundingChunks = candidate.groundingMetadata.groundingChunks;
+          for (const chunk of groundingChunks) {
+            if (chunk.web) {
+              const webChunk = chunk.web;
+              
+              // Close any open content block
+              if (hasStartedTextBlock || isToolUse) {
+                enqueueSSE(controller, 'content_block_stop', {
+                  type: 'content_block_stop',
+                  index: contentBlockIndex,
+                });
+                hasStartedTextBlock = false;
+                isToolUse = false;
+                currentToolCallId = null;
+                contentBlockIndex++;
+              }
+
+              // Generate unique tool use ID for search result
+              const searchToolId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              
+              // Start web search tool result block
+              enqueueSSE(controller, 'content_block_start', {
+                type: 'content_block_start',
+                index: contentBlockIndex,
+                content_block: {
+                  type: 'web_search_tool_result',
+                  tool_use_id: searchToolId,
+                  content: [{
+                    type: 'web_search_result',
+                    title: webChunk.title,
+                    url: webChunk.uri,
+                  }]
+                },
+              });
+
+              // Stop web search tool result block
+              enqueueSSE(controller, 'content_block_stop', {
+                type: 'content_block_stop',
+                index: contentBlockIndex,
+              });
+              
+              contentBlockIndex++;
+            }
+          }
         }
       }
 

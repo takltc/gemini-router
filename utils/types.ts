@@ -12,15 +12,21 @@ export interface ClaudeMessage {
 }
 
 export interface ClaudeContent {
-  type: 'text' | 'tool_use' | 'tool_result';
+  type: 'text' | 'tool_use' | 'tool_result' | 'web_search_tool_result';
   text?: string;
   // For tool_use
   id?: string;
   name?: string;
   input?: Record<string, unknown>;
-  // For tool_result
+  // For tool_result and web_search_tool_result
   tool_use_id?: string;
-  content?: string | Record<string, unknown>;
+  content?: string | Record<string, unknown> | WebSearchResult[] | unknown;
+}
+
+export interface WebSearchResult {
+  type: 'web_search_result';
+  title: string;
+  url: string;
 }
 
 export interface ClaudeTool {
@@ -116,8 +122,16 @@ export interface GeminiRequest {
     maxOutputTokens?: number;
     topP?: number;
     topK?: number;
+    stopSequences?: string[];
   };
   tools?: GeminiTool[];
+}
+
+export interface WebGroundingChunk {
+  web: {
+    uri: string;
+    title: string;
+  };
 }
 
 export interface GeminiCandidate {
@@ -126,7 +140,7 @@ export interface GeminiCandidate {
   };
   finishReason?: 'STOP' | 'MAX_TOKENS' | 'FUNCTION_CALL' | 'SAFETY' | 'RECITATION' | 'OTHER';
   groundingMetadata?: {
-    groundingChunks?: unknown[];
+    groundingChunks?: WebGroundingChunk[];
   };
 }
 
