@@ -128,6 +128,39 @@ describe('formatClaudeToGemini', () => {
     });
   });
 
+  it('should map tool_result.tool_use_id to prior tool_use name when available', () => {
+    const claudeRequest: ClaudeRequest = {
+      model: 'claude-3-opus-20240229',
+      messages: [
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_abc',
+              name: 'get_time',
+              input: { tz: 'UTC' },
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'toolu_abc',
+              content: { now: '2025-09-04T00:00:00Z' },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = formatClaudeToGemini(claudeRequest);
+    const parts = result.geminiBody.contents[1].parts as any[];
+    expect(parts[0].functionResponse.name).toBe('get_time');
+  });
+
   it('should handle system instructions', () => {
     const claudeRequest: ClaudeRequest = {
       model: 'claude-3-opus-20240229',

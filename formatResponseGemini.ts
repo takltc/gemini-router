@@ -54,9 +54,11 @@ export function formatGeminiToClaude(res: GeminiResponse, model: string): Claude
       });
     } else if ('functionCall' in part && part.functionCall) {
       // Function call - convert to tool_use
+      const toolId =
+        part.functionCall.id || `toolu_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
       claudeResponse.content.push({
         type: 'tool_use',
-        id: part.functionCall.id,
+        id: toolId,
         name: part.functionCall.name,
         input: part.functionCall.args || {},
       });
@@ -72,15 +74,16 @@ export function formatGeminiToClaude(res: GeminiResponse, model: string): Claude
     }
   }
 
-  // Handle grounding metadata for web search results
+  // Optionally surface grounding metadata (web results) as a standard tool_result block
   if (candidate.groundingMetadata?.groundingChunks) {
     const groundingChunks = candidate.groundingMetadata.groundingChunks;
+    const sources: { title: string; url: string }[] = [];
     for (const chunk of groundingChunks) {
       if (chunk.web) {
         const webChunk = chunk.web;
         claudeResponse.content.push({
-          type: 'web_search_tool_result',
-          tool_use_id: `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'tool_result',
+          tool_use_id: `search_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
           content: [
             {
               type: 'web_search_result',
@@ -89,7 +92,17 @@ export function formatGeminiToClaude(res: GeminiResponse, model: string): Claude
             },
           ],
         });
+        if (!sources.some((s) => s.url === webChunk.uri)) {
+          sources.push({ title: webChunk.title, url: webChunk.uri });
+        }
       }
+    }
+    // Also append a human-readable sources list as plain text for compat
+    if (sources.length > 0) {
+      const suffix = ['\n\nSources:']
+        .concat(sources.map((s) => `- ${s.title} (${s.url})`))
+        .join('\n');
+      claudeResponse.content.push({ type: 'text', text: suffix });
     }
   }
 

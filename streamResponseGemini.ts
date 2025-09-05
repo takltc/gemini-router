@@ -26,7 +26,7 @@ export function streamGeminiToAnthropic(
           model,
           stop_reason: null,
           stop_sequence: null,
-          usage: { input_tokens: 1, output_tokens: 1 },
+          usage: { input_tokens: 0, output_tokens: 0 },
         },
       };
       enqueueSSE(controller, 'message_start', messageStart);
@@ -35,9 +35,19 @@ export function streamGeminiToAnthropic(
       let hasStartedTextBlock = false;
       let isToolUse = false;
       let currentToolCallId: string | null = null;
-      let toolCallJsonMap = new Map<string, string>();
+      // Track last-sent args JSON per tool call to avoid duplicate deltas
+      const lastArgsSent = new Map<string, string>();
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
+      let lastFinishReason:
+        | 'STOP'
+        | 'MAX_TOKENS'
+        | 'FUNCTION_CALL'
+        | 'SAFETY'
+        | 'RECITATION'
+        | 'OTHER'
+        | undefined;
+      const sources: { title: string; url: string }[] = [];
 
       const reader = geminiStream.getReader();
       const decoder = new TextDecoder();
@@ -51,15 +61,19 @@ export function streamGeminiToAnthropic(
             if (buffer.trim()) {
               const lines = buffer.split('\n');
               for (const line of lines) {
-                if (line.trim() && line.startsWith('data: ')) {
-                  const data = line.slice(6).trim();
-                  if (data === '[DONE]') continue;
-
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                let payload = trimmed;
+                if (trimmed.startsWith('data: ')) {
+                  payload = trimmed.slice(6).trim();
+                }
+                if (payload === '[DONE]') continue;
+                if (payload.startsWith('{') || payload.startsWith('[')) {
                   try {
-                    const parsed = JSON.parse(data);
+                    const parsed = JSON.parse(payload);
                     processGeminiChunk(parsed);
                   } catch {
-                    // Parse error
+                    // ignore
                   }
                 }
               }
@@ -76,17 +90,21 @@ export function streamGeminiToAnthropic(
           // Keep the last potentially incomplete line in buffer
           buffer = lines.pop() || '';
 
-          // Process complete lines in order
+          // Process complete lines in order (support both SSE-style and raw NDJSON)
           for (const line of lines) {
-            if (line.trim() && line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            let payload = trimmed;
+            if (trimmed.startsWith('data: ')) {
+              payload = trimmed.slice(6).trim();
+            }
+            if (payload === '[DONE]') continue;
+            if (payload.startsWith('{') || payload.startsWith('[')) {
               try {
-                const parsed = JSON.parse(data);
+                const parsed = JSON.parse(payload);
                 processGeminiChunk(parsed);
               } catch {
-                // Parse error
+                // Ignore incomplete JSON line; let buffer accumulate
                 continue;
               }
             }
@@ -109,6 +127,22 @@ export function streamGeminiToAnthropic(
 
         // Process content parts
         const parts = candidate.content?.parts || [];
+        if (candidate.finishReason) {
+          lastFinishReason = candidate.finishReason;
+        }
+
+        // Collect grounding sources (web)
+        if (candidate.groundingMetadata?.groundingChunks) {
+          for (const gc of candidate.groundingMetadata.groundingChunks) {
+            if (gc.web) {
+              const title = gc.web.title;
+              const url = gc.web.uri;
+              if (!sources.some((s) => s.url === url)) {
+                sources.push({ title, url });
+              }
+            }
+          }
+        }
 
         for (const part of parts) {
           if ('text' in part && part.text !== undefined) {
@@ -177,7 +211,7 @@ export function streamGeminiToAnthropic(
 
               isToolUse = true;
               currentToolCallId = toolCallId;
-              toolCallJsonMap.set(toolCallId, '');
+              lastArgsSent.set(toolCallId, '');
 
               // Start new tool use block
               const toolBlock = {
@@ -197,68 +231,55 @@ export function streamGeminiToAnthropic(
             // Send function arguments as input_json_delta
             if ('functionCall' in part && part.functionCall.args) {
               const argsJson = JSON.stringify(part.functionCall.args);
-              const currentJson = toolCallJsonMap.get(currentToolCallId || '') || '';
-              toolCallJsonMap.set(currentToolCallId || '', currentJson + argsJson);
-
-              enqueueSSE(controller, 'content_block_delta', {
-                type: 'content_block_delta',
-                index: contentBlockIndex,
-                delta: {
-                  type: 'input_json_delta',
-                  partial_json: argsJson,
-                },
-              });
-            }
-          }
-        }
-
-        // Handle groundingMetadata if present (for web search results)
-        if (candidate.groundingMetadata?.groundingChunks) {
-          const groundingChunks = candidate.groundingMetadata.groundingChunks;
-          for (const chunk of groundingChunks) {
-            if (chunk.web) {
-              const webChunk = chunk.web;
-              
-              // Close any open content block
-              if (hasStartedTextBlock || isToolUse) {
-                enqueueSSE(controller, 'content_block_stop', {
-                  type: 'content_block_stop',
-                  index: contentBlockIndex,
-                });
-                hasStartedTextBlock = false;
-                isToolUse = false;
-                currentToolCallId = null;
-                contentBlockIndex++;
+              const last = lastArgsSent.get(currentToolCallId || '') || '';
+              let partial = argsJson;
+              if (argsJson.startsWith(last)) {
+                partial = argsJson.slice(last.length);
               }
-
-              // Generate unique tool use ID for search result
-              const searchToolId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-              
-              // Start web search tool result block
-              enqueueSSE(controller, 'content_block_start', {
-                type: 'content_block_start',
-                index: contentBlockIndex,
-                content_block: {
-                  type: 'web_search_tool_result',
-                  tool_use_id: searchToolId,
-                  content: [{
-                    type: 'web_search_result',
-                    title: webChunk.title,
-                    url: webChunk.uri,
-                  }]
-                },
-              });
-
-              // Stop web search tool result block
-              enqueueSSE(controller, 'content_block_stop', {
-                type: 'content_block_stop',
-                index: contentBlockIndex,
-              });
-              
-              contentBlockIndex++;
+              if (partial.length > 0 || last.length === 0) {
+                enqueueSSE(controller, 'content_block_delta', {
+                  type: 'content_block_delta',
+                  index: contentBlockIndex,
+                  delta: {
+                    type: 'input_json_delta',
+                    partial_json: partial.length > 0 ? partial : argsJson,
+                  },
+                });
+                lastArgsSent.set(currentToolCallId || '', argsJson);
+              }
             }
           }
         }
+        // Note: do not inject groundingMetadata chunks into SSE to avoid non-standard content types
+      }
+
+      // Append sources as plain text at end if any
+      if (sources.length > 0) {
+        if (isToolUse) {
+          enqueueSSE(controller, 'content_block_stop', {
+            type: 'content_block_stop',
+            index: contentBlockIndex,
+          });
+          isToolUse = false;
+          currentToolCallId = null;
+          contentBlockIndex++;
+        }
+        if (!hasStartedTextBlock) {
+          enqueueSSE(controller, 'content_block_start', {
+            type: 'content_block_start',
+            index: contentBlockIndex,
+            content_block: { type: 'text', text: '' },
+          });
+          hasStartedTextBlock = true;
+        }
+        const suffix = ['\n\nSources:']
+          .concat(sources.map((s) => `- ${s.title} (${s.url})`))
+          .join('\n');
+        enqueueSSE(controller, 'content_block_delta', {
+          type: 'content_block_delta',
+          index: contentBlockIndex,
+          delta: { type: 'text_delta', text: suffix },
+        });
       }
 
       // Close last content block
@@ -273,12 +294,17 @@ export function streamGeminiToAnthropic(
       enqueueSSE(controller, 'message_delta', {
         type: 'message_delta',
         delta: {
-          stop_reason: isToolUse ? 'tool_use' : 'end_turn',
+          stop_reason:
+            lastFinishReason === 'FUNCTION_CALL'
+              ? 'tool_use'
+              : lastFinishReason === 'MAX_TOKENS'
+                ? 'max_tokens'
+                : 'end_turn',
           stop_sequence: null,
         },
         usage: {
-          input_tokens: totalInputTokens || 100,
-          output_tokens: totalOutputTokens || 150,
+          input_tokens: totalInputTokens || 0,
+          output_tokens: totalOutputTokens || 0,
         },
       });
 

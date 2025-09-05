@@ -70,6 +70,30 @@ describe('formatGeminiToClaude', () => {
     expect(result.stop_reason).toBe('tool_use');
   });
 
+  it('should generate tool_use id when missing', () => {
+    const geminiResponse: GeminiResponse = {
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                functionCall: {
+                  name: 'do_something',
+                  args: { a: 1 },
+                },
+              },
+            ],
+          },
+          finishReason: 'FUNCTION_CALL',
+        },
+      ],
+    };
+
+    const result = formatGeminiToClaude(geminiResponse, 'gemini-pro');
+    expect(result.content[0].type).toBe('tool_use');
+    expect(result.content[0].id).toMatch(/^toolu_/);
+  });
+
   it('should handle function response', () => {
     const geminiResponse: GeminiResponse = {
       candidates: [
